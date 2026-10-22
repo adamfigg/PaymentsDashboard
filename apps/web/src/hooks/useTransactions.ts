@@ -1,18 +1,10 @@
-import { useEffect, useState } from "react"
+import type { Filters, ListParams, TransactionPage, TransactionSummary } from "../services/transaction-service"
+import { summaryUrl, transactionsUrl } from "../services/transaction-service"
+import { useFetch } from "./useFetch"
 
-import type { Transaction } from "../models/transaction"
-import { fetchTransactions } from "../services/transaction-service"
+export const useTransactions = (params: ListParams) => useFetch<TransactionPage>(transactionsUrl(params))
 
-export const useTransactions = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchTransactions().then((data) => {
-      setTransactions(data)
-      setLoading(false)
-    })
-  }, [])
-
-  return { transactions, loading }
-}
+// Separate request from the page: it only depends on the filters, so paging and
+// sorting don't refetch it, and at scale it can be cached or degraded on its own.
+export const useTransactionSummary = ({ q, cardBrands, statuses }: Filters) =>
+  useFetch<TransactionSummary>(summaryUrl({ q, cardBrands, statuses }))

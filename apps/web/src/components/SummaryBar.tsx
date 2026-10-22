@@ -1,19 +1,34 @@
-import { Statistic } from "antd"
+import { Statistic, Tooltip } from "antd"
+import { InfoCircleOutlined } from "@ant-design/icons"
 
-import type { Transaction } from "../models/transaction"
-import { computeTotal } from "../utils/format"
+import type { TransactionSummary } from "../services/transaction-service"
+import { formatCurrency } from "../utils/format"
 
 interface SummaryBarProps {
-  transactions: Transaction[]
+  // Computed by the server over the whole search result, not just the page on screen.
+  summary: TransactionSummary | undefined
+  loading: boolean
 }
 
-export const SummaryBar = ({ transactions }: SummaryBarProps) => {
-  const total = computeTotal(transactions)
-
+export const SummaryBar = ({ summary, loading }: SummaryBarProps) => {
   return (
     <div className="summary-bar">
-      <Statistic title="Transactions" value={transactions.length} />
-      <Statistic title="Total processed" value={total} precision={2} prefix="$" />
+      <Statistic title="Transactions" value={summary?.count ?? "—"} loading={loading} />
+      <Statistic
+        title={
+          <>
+            Total processed{" "}
+            <Tooltip title="Approved transactions, including surcharge">
+              <InfoCircleOutlined aria-label="Approved transactions, including surcharge" />
+            </Tooltip>
+          </>
+        }
+        value={summary?.processedTotal ?? "—"}
+        loading={loading}
+        // Statistic's own `precision` truncates rather than rounds (it slices the
+        // decimal string), so format with Intl, the same as the rest of the table.
+        formatter={() => (summary ? formatCurrency(summary.processedTotal) : "—")}
+      />
     </div>
   )
 }
