@@ -170,10 +170,32 @@ describe("transactionService filters", () => {
 })
 
 describe("transactionService.create", () => {
+  const input = {
+    merchantName: "New Co",
+    cardBrand: CardBrand.VISA,
+    status: TransactionStatus.PENDING,
+    amountCents: 110850,
+    surchargeCents: 3326,
+    surchargeRate: 0.03,
+  }
+
   it("puts the new transaction on the first page", () => {
     const service = createTransactionService([txn(1), txn(2)])
-    const created = service.create({ merchantName: "New Co", cardBrand: CardBrand.VISA, amount: 5 })
+    const created = service.create(input)
     expect(service.list({ ...DEFAULT_SORT, ...NO_FILTERS, page: 1, pageSize: 1, q: "" }).data[0].id).toBe(created.id)
+  })
+
+  it("stores exact dollars with total = amount + surcharge", () => {
+    const created = createTransactionService([]).create(input)
+    expect(created).toMatchObject({ amount: 1108.5, surcharge: 33.26, total: 1141.76, surchargeRate: 0.03, status: "PENDING" })
+  })
+
+  it("takes the next id after the highest existing one, so gaps can't cause a collision", () => {
+    // Two rows, but ids up to 7: `length + 1` would have produced txn_000003 (fine) and
+    // later reused existing ids as rows were added; max + 1 never can.
+    const service = createTransactionService([txn(3), txn(7)])
+    expect(service.create(input).id).toBe("txn_000008")
+    expect(service.create(input).id).toBe("txn_000009")
   })
 })
 

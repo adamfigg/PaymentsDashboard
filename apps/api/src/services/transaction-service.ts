@@ -11,11 +11,17 @@ export interface TransactionSummary {
   processedTotal: number
 }
 
+// Already validated, with the money resolved to integer cents (see http/new-transaction.ts).
 export interface NewTransactionInput {
   merchantName: string
   cardBrand: CardBrand
-  amount: number
+  status: TransactionStatus
+  amountCents: number
+  surchargeCents: number
+  surchargeRate: number
 }
+
+const idNumber = (id: string): number => Number(/^txn_(\d+)$/.exec(id)?.[1] ?? 0)
 
 // Every column the table shows can be sorted on.
 export const SORT_FIELDS = [
@@ -106,6 +112,10 @@ export const createTransactionService = (seed: Transaction[] = loadTransactions(
   // new transaction is always the newest.
   const transactions = [...seed].sort(compareDefault)
 
+  // Next id comes from the highest existing one, not the row count: with gaps in the
+  // seed ids (or rows ever removed), `length + 1` would reuse an id that exists.
+  let lastId = transactions.reduce((max, t) => Math.max(max, idNumber(t.id)), 0)
+
   const getAll = (): Transaction[] => transactions
 
   const list = ({ page, pageSize, sort, order, ...filters }: ListQuery): Page<Transaction> => {
@@ -143,15 +153,18 @@ export const createTransactionService = (seed: Transaction[] = loadTransactions(
   }
 
   const create = (input: NewTransactionInput): Transaction => {
+    lastId += 1
     const transaction: Transaction = {
-      id: `txn_${String(transactions.length + 1).padStart(6, "0")}`,
+      id: `txn_${String(lastId).padStart(6, "0")}`,
       merchantName: input.merchantName,
       cardBrand: input.cardBrand,
-      amount: input.amount,
-      surchargeRate: 0,
-      surcharge: 0,
-      total: input.amount,
-      status: TransactionStatus.APPROVED,
+      // Stored as dollars to match the existing data model; computed from cents so the
+      // three figures are exact and total is always amount + surcharge.
+      amount: fromCents(input.amountCents),
+      surchargeRate: input.surchargeRate,
+      surcharge: fromCents(input.surchargeCents),
+      total: fromCents(input.amountCents + input.surchargeCents),
+      status: input.status,
       createdAt: new Date().toISOString(),
     }
     transactions.unshift(transaction)

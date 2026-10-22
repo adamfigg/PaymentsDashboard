@@ -37,23 +37,30 @@ export interface ListParams extends Filters {
   order: SortOrder
 }
 
+export type FieldErrors = Partial<Record<"merchantName" | "cardBrand" | "status" | "amount" | "surcharge", string>>
+
 export class ApiError extends Error {
   readonly status: number
+  /** Per-field messages from a 400, to show under the matching inputs. */
+  readonly fieldErrors: FieldErrors
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, fieldErrors: FieldErrors = {}) {
     super(message)
     this.status = status
+    this.fieldErrors = fieldErrors
   }
+}
+
+const toApiError = async (rsp: Response): Promise<ApiError> => {
+  const body = await rsp.json().catch(() => null)
+  return new ApiError(body?.error ?? `Request failed (${rsp.status})`, rsp.status, body?.fieldErrors)
 }
 
 // fetch() only rejects on network failure; a 4xx/5xx resolves normally, so check
 // the status here and turn it into an error the UI can show.
 export const getJson = async <T>(url: string, signal?: AbortSignal): Promise<T> => {
   const rsp = await fetch(url, { signal })
-  if (!rsp.ok) {
-    const body = await rsp.json().catch(() => null)
-    throw new ApiError(body?.error ?? `Request failed (${rsp.status})`, rsp.status)
-  }
+  if (!rsp.ok) throw await toApiError(rsp)
   return rsp.json()
 }
 
@@ -82,17 +89,37 @@ export const transactionsUrl = ({ page, pageSize, sort, order, ...filters }: Lis
 export const summaryUrl = (filters: Filters): string =>
   withQuery(`${API_BASE}/transactions/summary`, filterParams(filters))
 
+export interface SurchargeConfig {
+  defaultPercent: number
+  maxPercent: number
+  /** The common card-network cap; the form warns above it. */
+  typicalCapPercent: number
+}
+
+export const SURCHARGE_CONFIG_URL = `${API_BASE}/surcharge-config`
+
+// Money as decimal strings, exactly as entered, so it never passes through a float.
+// Send exactly one of surchargePercent / surcharge: whichever the user typed last.
 export interface NewTransactionInput {
   merchantName: string
   cardBrand: CardBrand
-  amount: number
+  status: TransactionStatus
+  amount: string
+  surchargePercent?: string
+  surcharge?: string
 }
 
-export const createTransaction = async (input: NewTransactionInput): Promise<Transaction> => {
+/**
+ * `idempotencyKey` stays the same for every retry of one submission, so if a request
+ * times out after the server created the transaction, retrying returns that
+ * transaction instead of creating a second one.
+ */
+export const createTransaction = async (input: NewTransactionInput, idempotencyKey: string): Promise<Transaction> => {
   const rsp = await fetch(`${API_BASE}/transactions`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "Idempotency-Key": idempotencyKey },
     body: JSON.stringify(input),
   })
+  if (!rsp.ok) throw await toApiError(rsp)
   return rsp.json()
 }
