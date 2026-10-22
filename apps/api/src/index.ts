@@ -31,7 +31,7 @@ app.get("/api/transactions/summary", (req: Request, res: Response) => {
   if (!parsed.ok) {
     return res.status(400).json({ error: "Invalid query", details: parsed.errors })
   }
-  res.json(transactionService.getSummary(parsed.q))
+  res.json(transactionService.getSummary(parsed.filters))
 })
 
 app.post("/api/transactions", (req: Request, res: Response) => {

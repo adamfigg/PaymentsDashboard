@@ -1,4 +1,4 @@
-import type { CardBrand, Transaction } from "../models/transaction"
+import type { CardBrand, Transaction, TransactionStatus } from "../models/transaction"
 
 const API_BASE = "/api"
 
@@ -17,10 +17,24 @@ export interface TransactionSummary {
   processedTotal: number
 }
 
-export interface ListParams {
+// Mirrors the API's SORT_FIELDS: every column the table shows.
+export type SortField = "id" | "merchantName" | "cardBrand" | "amount" | "surcharge" | "total" | "status" | "createdAt"
+export type SortOrder = "asc" | "desc"
+
+// Which rows a request covers; the list and the summary take the same filters.
+export interface Filters {
+  q: string
+  /** Empty = any brand. */
+  cardBrands: CardBrand[]
+  /** Empty = any status. */
+  statuses: TransactionStatus[]
+}
+
+export interface ListParams extends Filters {
   page: number
   pageSize: number
-  q: string
+  sort: SortField
+  order: SortOrder
 }
 
 export class ApiError extends Error {
@@ -48,16 +62,25 @@ const withQuery = (path: string, params: Record<string, string>) => {
   return qs ? `${path}?${qs}` : path
 }
 
+// Only the filters that are set, as API query params (?cardBrand=VISA,AMEX).
+const filterParams = ({ q, cardBrands, statuses }: Filters): Record<string, string> => ({
+  ...(q ? { q } : {}),
+  ...(cardBrands.length ? { cardBrand: cardBrands.join(",") } : {}),
+  ...(statuses.length ? { status: statuses.join(",") } : {}),
+})
+
 // URL builders, so a request is identified by its URL (used as the hook's cache key).
-export const transactionsUrl = ({ page, pageSize, q }: ListParams): string =>
+export const transactionsUrl = ({ page, pageSize, sort, order, ...filters }: ListParams): string =>
   withQuery(`${API_BASE}/transactions`, {
     page: String(page),
     pageSize: String(pageSize),
-    ...(q ? { q } : {}),
+    ...filterParams(filters),
+    sort,
+    order,
   })
 
-export const summaryUrl = (q: string): string =>
-  withQuery(`${API_BASE}/transactions/summary`, q ? { q } : {})
+export const summaryUrl = (filters: Filters): string =>
+  withQuery(`${API_BASE}/transactions/summary`, filterParams(filters))
 
 export interface NewTransactionInput {
   merchantName: string

@@ -1,4 +1,5 @@
-import type { ListQuery } from "../services/transaction-service.js"
+import { CARD_BRANDS, DEFAULT_SORT, SORT_FIELDS, STATUSES } from "../services/transaction-service.js"
+import type { Filters, ListQuery, SortField, SortOrder } from "../services/transaction-service.js"
 
 export const DEFAULT_PAGE_SIZE = 25
 export const MAX_PAGE_SIZE = 100
@@ -34,14 +35,34 @@ const searchTerm = (query: Record<string, unknown>, errors: string[]): string =>
   return q
 }
 
-// The summary takes the same search as the list (but no paging), parsed by the same
-// rules, so `?q=` can't mean different things on the two endpoints.
+// Comma-separated values from a fixed set, e.g. ?status=APPROVED,PENDING.
+// Unknown values are a 400 rather than silently ignored: a typo would otherwise look
+// like a filter that matches nothing. Duplicates are dropped.
+const enumList = <T extends string>(raw: string | undefined, name: string, allowed: readonly T[], errors: string[]): T[] => {
+  if (!raw) return []
+  const values = [...new Set(raw.split(",").map((v) => v.trim()).filter(Boolean))]
+  const unknown = values.filter((v) => !(allowed as readonly string[]).includes(v))
+  if (unknown.length > 0) {
+    errors.push(`${name} must be a comma-separated list of: ${allowed.join(", ")} (got ${unknown.join(", ")})`)
+    return []
+  }
+  return values as T[]
+}
+
+const parseFilters = (query: Record<string, unknown>, errors: string[]): Filters => ({
+  q: searchTerm(query, errors),
+  cardBrands: enumList(single(query.cardBrand, "cardBrand", errors), "cardBrand", CARD_BRANDS, errors),
+  statuses: enumList(single(query.status, "status", errors), "status", STATUSES, errors),
+})
+
+// The summary takes the same filters as the list (but no paging or sort), parsed by
+// the same rules, so a filter can't mean different things on the two endpoints.
 export const parseSummaryQuery = (
   query: Record<string, unknown>,
-): { ok: true; q: string } | { ok: false; errors: string[] } => {
+): { ok: true; filters: Filters } | { ok: false; errors: string[] } => {
   const errors: string[] = []
-  const q = searchTerm(query, errors)
-  return errors.length > 0 ? { ok: false, errors } : { ok: true, q }
+  const filters = parseFilters(query, errors)
+  return errors.length > 0 ? { ok: false, errors } : { ok: true, filters }
 }
 
 export const parseListQuery = (query: Record<string, unknown>): ParseResult => {
@@ -55,7 +76,23 @@ export const parseListQuery = (query: Record<string, unknown>): ParseResult => {
     MAX_PAGE_SIZE,
   )
 
-  const q = searchTerm(query, errors)
+  const filters = parseFilters(query, errors)
 
-  return errors.length > 0 ? { ok: false, errors } : { ok: true, query: { page, pageSize, q } }
+  // `sort` becomes a property key on the server, so it's checked against a whitelist
+  // first: ?sort=__proto__ or an unknown column is a 400, not an odd sort.
+  const sortRaw = single(query.sort, "sort", errors)
+  let sort: SortField = DEFAULT_SORT.sort
+  if (sortRaw) {
+    if ((SORT_FIELDS as readonly string[]).includes(sortRaw)) sort = sortRaw as SortField
+    else errors.push(`sort must be one of: ${SORT_FIELDS.join(", ")}`)
+  }
+
+  const orderRaw = single(query.order, "order", errors)
+  let order: SortOrder = DEFAULT_SORT.order
+  if (orderRaw) {
+    if (orderRaw === "asc" || orderRaw === "desc") order = orderRaw
+    else errors.push("order must be asc or desc")
+  }
+
+  return errors.length > 0 ? { ok: false, errors } : { ok: true, query: { page, pageSize, sort, order, ...filters } }
 }

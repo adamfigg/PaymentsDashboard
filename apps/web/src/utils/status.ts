@@ -9,6 +9,11 @@ export const statusTagColor = (status: TransactionStatus): string => {
     case TransactionStatus.PENDING:
       return "warning"
     case TransactionStatus.REFUNDED:
+    case TransactionStatus.VOIDED:
+      return "default"
+    default:
+      // A status the API sends that this build doesn't know yet: render it plainly
+      // instead of passing `undefined` as a color.
       return "default"
   }
 }

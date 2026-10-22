@@ -10,6 +10,8 @@ export enum TransactionStatus {
   DECLINED = "DECLINED",
   REFUNDED = "REFUNDED",
   PENDING = "PENDING",
+  // Present in the data (one row) but missing from the original enum.
+  VOIDED = "VOIDED",
 }
 
 export interface Transaction {
