@@ -2,7 +2,7 @@ import express from "express"
 import type { NextFunction, Request, Response } from "express"
 import cors from "cors"
 
-import { PORT } from "./config.js"
+import { API_PORT } from "./config.js"
 import { createTransactionService } from "./services/transaction-service.js"
 
 const app = express()
@@ -46,6 +46,6 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: err.message, stack: err.stack })
 })
 
-app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT} (${transactionService.getAll().length} transactions)`)
+app.listen(API_PORT, () => {
+  console.log(`API listening on http://localhost:${API_PORT} (${transactionService.getAll().length} transactions)`)
 })
