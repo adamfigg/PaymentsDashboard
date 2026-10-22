@@ -1,19 +1,19 @@
 import { Statistic, Tooltip } from "antd"
 import { InfoCircleOutlined } from "@ant-design/icons"
 
-import type { Transaction } from "../models/transaction"
-import { computeProcessedTotal, formatCurrency } from "../utils/format"
+import type { TransactionSummary } from "../services/transaction-service"
+import { formatCurrency } from "../utils/format"
 
 interface SummaryBarProps {
-  transactions: Transaction[]
+  // Computed by the server over the whole search result, not just the page on screen.
+  summary: TransactionSummary | undefined
+  loading: boolean
 }
 
-export const SummaryBar = ({ transactions }: SummaryBarProps) => {
-  const total = computeProcessedTotal(transactions)
-
+export const SummaryBar = ({ summary, loading }: SummaryBarProps) => {
   return (
     <div className="summary-bar">
-      <Statistic title="Transactions" value={transactions.length} />
+      <Statistic title="Transactions" value={summary?.count ?? "—"} loading={loading} />
       <Statistic
         title={
           <>
@@ -23,10 +23,11 @@ export const SummaryBar = ({ transactions }: SummaryBarProps) => {
             </Tooltip>
           </>
         }
-        value={total}
+        value={summary?.processedTotal ?? "—"}
+        loading={loading}
         // Statistic's own `precision` truncates rather than rounds (it slices the
         // decimal string), so format with Intl, the same as the rest of the table.
-        formatter={() => formatCurrency(total)}
+        formatter={() => (summary ? formatCurrency(summary.processedTotal) : "—")}
       />
     </div>
   )

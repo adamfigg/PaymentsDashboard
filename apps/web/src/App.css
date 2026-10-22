@@ -119,3 +119,17 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
 }
+
+.transaction-empty {
+  padding: 48px 16px;
+}
+
+.transaction-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.stale-error {
+  margin-bottom: 16px;
+}

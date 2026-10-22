@@ -22,8 +22,8 @@ export const TransactionList = ({ transactions, onSelect }: TransactionListProps
         <span>Status</span>
         <span>Date</span>
       </div>
-      {transactions.map((t, i) => (
-        <div className="transaction-row" key={i} onClick={() => onSelect(t)}>
+      {transactions.map((t) => (
+        <div className="transaction-row" key={t.id} onClick={() => onSelect(t)}>
           <span className="mono">{t.id}</span>
           <span>{t.merchantName}</span>
           <span>{t.cardBrand}</span>

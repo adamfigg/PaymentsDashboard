@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response } from "express"
 import cors from "cors"
 
 import { API_PORT } from "./config.js"
+import { parseListQuery, parseSummaryQuery } from "./http/list-query.js"
 import { createTransactionService } from "./services/transaction-service.js"
 
 const app = express()
@@ -18,12 +19,19 @@ app.get("/api/health", (_req: Request, res: Response) => {
 
 app.get("/api/transactions", (req: Request, res: Response) => {
   console.log("GET /api/transactions", req.query)
-  const transactions = transactionService.getAll()
-  res.json({ transactions })
+  const parsed = parseListQuery(req.query)
+  if (!parsed.ok) {
+    return res.status(400).json({ error: "Invalid query", details: parsed.errors })
+  }
+  res.json(transactionService.list(parsed.query))
 })
 
-app.get("/api/transactions/summary", (_req: Request, res: Response) => {
-  res.json(transactionService.getSummary())
+app.get("/api/transactions/summary", (req: Request, res: Response) => {
+  const parsed = parseSummaryQuery(req.query)
+  if (!parsed.ok) {
+    return res.status(400).json({ error: "Invalid query", details: parsed.errors })
+  }
+  res.json(transactionService.getSummary(parsed.q))
 })
 
 app.post("/api/transactions", (req: Request, res: Response) => {
