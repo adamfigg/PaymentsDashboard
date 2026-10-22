@@ -86,6 +86,8 @@ export const transactionsUrl = ({ page, pageSize, sort, order, ...filters }: Lis
     order,
   })
 
+export const transactionUrl = (id: string): string => `${API_BASE}/transactions/${encodeURIComponent(id)}`
+
 export const summaryUrl = (filters: Filters): string =>
   withQuery(`${API_BASE}/transactions/summary`, filterParams(filters))
 

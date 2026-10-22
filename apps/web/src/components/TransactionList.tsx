@@ -1,3 +1,4 @@
+import { Link, useLocation } from "react-router-dom"
 import { Tag } from "antd"
 import { CaretDownOutlined, CaretUpOutlined } from "@ant-design/icons"
 
@@ -50,7 +51,11 @@ interface TransactionListProps {
   statuses: TransactionStatus[]
   onSort: (field: SortField) => void
   onFilter: (change: { cardBrands: CardBrand[] } | { statuses: TransactionStatus[] }) => void
-  onSelect: (transaction: Transaction) => void
+}
+
+/** Router state passed to the detail page, so its back link returns to this exact view. */
+export interface FromListState {
+  fromList: string
 }
 
 export const TransactionList = ({
@@ -61,8 +66,11 @@ export const TransactionList = ({
   statuses,
   onSort,
   onFilter,
-  onSelect,
 }: TransactionListProps) => {
+  // The list's current URL (search, filters, sort, page), carried to the detail page.
+  const { search } = useLocation()
+  const fromList: FromListState = { fromList: `/${search}` }
+
   const renderHeader = (column: Column) => {
     if (column.kind === "filter") {
       return (
@@ -108,21 +116,14 @@ export const TransactionList = ({
         {COLUMNS.map(renderHeader)}
       </div>
       {transactions.map((t) => (
-        <div
-          className="transaction-row"
-          role="row"
-          key={t.id}
-          tabIndex={0}
-          onClick={() => onSelect(t)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault()
-              onSelect(t)
-            }
-          }}
-        >
+        // The id is a real link, stretched over the whole row with CSS (.row-link), so
+        // clicking anywhere opens the detail page while middle-click, Ctrl/Cmd-click,
+        // "copy link" and keyboard focus all behave like any other link.
+        <div className="transaction-row" role="row" key={t.id}>
           <span role="cell" className="mono">
-            {t.id}
+            <Link to={`/transactions/${encodeURIComponent(t.id)}`} state={fromList} className="row-link">
+              {t.id}
+            </Link>
           </span>
           <span role="cell">{t.merchantName}</span>
           <span role="cell">{t.cardBrand}</span>

@@ -590,7 +590,16 @@ _TODO_
   works across instances.
 
 ## 4. Task 4: Transaction detail page
-_TODO_
+- removed the old modal since the task asks for a new page top be opened and this shows all the same info and more
+- rows are now clickable and open new details page
+- you can then from the details page filter on the entire table and copy paste the id value as well
+- 
+
+**Decision: the modal is gone.** Clicking a row used to open a `TransactionModal`.
+The task asks for a dedicated page, and a modal duplicates it with weaker behaviour:
+no URL, so it can't be shared, bookmarked, refreshed or opened in a new tab. I
+removed the modal entirely (component deleted), and rows now go to
+`/transactions/:id`.
 
 ## 5. Task 5: Improvement opportunities
 _TODO_

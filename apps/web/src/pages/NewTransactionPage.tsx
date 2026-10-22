@@ -147,7 +147,9 @@ const NewTransactionForm = ({ config }: { config: SurchargeConfig }) => {
     try {
       const created = await createTransaction(input, idempotencyKey.current)
       message.success(`Transaction ${created.id} created`)
-      navigate("/")
+      // Straight to the new transaction. `replace` so Back goes to wherever the user
+      // was before the form, not back into a form that's already been submitted.
+      navigate(`/transactions/${encodeURIComponent(created.id)}`, { replace: true })
     } catch (err) {
       if (err instanceof ApiError && Object.keys(err.fieldErrors).length > 0) {
         // Show the server's messages under the matching inputs. A surcharge error

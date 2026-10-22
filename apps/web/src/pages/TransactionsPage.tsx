@@ -4,11 +4,10 @@ import { ClearOutlined, SearchOutlined } from "@ant-design/icons"
 
 import { SummaryBar } from "../components/SummaryBar"
 import { TransactionList, nextSort } from "../components/TransactionList"
-import { TransactionModal } from "../components/TransactionModal"
 import { useDebouncedValue } from "../hooks/useDebouncedValue"
 import { PAGE_SIZE_OPTIONS, isDefaultView, useListParams } from "../hooks/useListParams"
 import { useTransactionSummary, useTransactions } from "../hooks/useTransactions"
-import type { CardBrand, Transaction, TransactionStatus } from "../models/transaction"
+import type { CardBrand, TransactionStatus } from "../models/transaction"
 import type { SortField } from "../services/transaction-service"
 
 // Long enough to skip the intermediate states of a word, short enough to feel live.
@@ -24,7 +23,6 @@ export const TransactionsPage = () => {
   // The last search the input and the URL agreed on. It tells a URL change we made
   // apart from one that came from outside (back/forward, a pasted link).
   const syncedQ = useRef(q)
-  const [selected, setSelected] = useState<Transaction | null>(null)
 
   const commitSearch = (value: string) => {
     const next = value.trim()
@@ -155,7 +153,6 @@ export const TransactionsPage = () => {
             statuses={params.statuses}
             onSort={handleSort}
             onFilter={handleFilter}
-            onSelect={setSelected}
           />
         </Spin>
         <Pagination
@@ -211,7 +208,6 @@ export const TransactionsPage = () => {
 
       {renderBody()}
 
-      <TransactionModal transaction={selected} onClose={() => setSelected(null)} />
     </>
   )
 }
